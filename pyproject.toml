@@ -11,6 +11,9 @@ authors = [{ name = "JarbasAi" }]
 requires-python = ">=3.8"
 dependencies = ["requests"]
 
+[project.optional-dependencies]
+test = ["pytest"]
+
 [project.urls]
 Homepage = "https://github.com/OpenJarbas/radiosoma"
 
