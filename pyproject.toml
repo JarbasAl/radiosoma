@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "radiosoma"
+dynamic = ["version"]
+description = "SomaFM Python API"
+license = { text = "Apache-2.0" }
+authors = [{ name = "JarbasAi" }]
+requires-python = ">=3.8"
+dependencies = ["requests"]
+
+[project.urls]
+Homepage = "https://github.com/OpenJarbas/radiosoma"
+
+[tool.setuptools.dynamic]
+version = { attr = "radiosoma.version.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["radiosoma*"]
