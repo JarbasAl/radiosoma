@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+**mediavocab integration:**
+
+- `mediavocab>=0.1.0` declared as a hard runtime dep (was being
+  implicit-imported by `converters.station_to_release`).
+- `station_to_release()` returns `StreamMode.CONTINUOUS` per
+  mediavocab spec §4.8 (live linear radio is rolling, no defined
+  end). Previously set `StreamMode.LIVE`, which the spec reserves
+  for real-time broadcast that may become ON_DEMAND when archived.
+- Genres now populate the canonical `Work.content_genres` list
+  (lower-cased, comma-split) instead of being buried in `Work.extra`.
+- New offline `test/test_converter.py` (8 cases).
+
 ## [0.0.2a1](https://github.com/JarbasAl/radiosoma/tree/0.0.2a1) (2026-04-27)
 
 [Full Changelog](https://github.com/JarbasAl/radiosoma/compare/0.0.1...0.0.2a1)
