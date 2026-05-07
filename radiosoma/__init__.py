@@ -2,8 +2,6 @@ from collections import defaultdict
 from typing import Iterable, List, Optional
 from xml.etree import cElementTree as ET
 
-import requests
-
 from radiosoma.transport import default_session
 
 

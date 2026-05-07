@@ -1,6 +1,6 @@
 def test_import():
-    import radiosoma
-    from radiosoma import SomaFmStation
+    import radiosoma  # noqa: F401
+    from radiosoma import SomaFmStation  # noqa: F401
 
 
 def test_version():
