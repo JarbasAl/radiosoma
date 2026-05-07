@@ -22,25 +22,36 @@ Returns a generator of `SomaFmStation` objects.
 | `station_id` | `str` | Short identifier (e.g. `"groovesalad"`) |
 | `title` | `str` | Human-readable name |
 | `description` | `str` | Station description |
-| `genre` | `str` | Music genre tag |
+| `genre` | `str` | Music genre tag (raw, may use `,` or `\|` separators) |
 | `image` | `str \| None` | URL of the largest available image |
+| `dj` | `str` | DJ name (empty if none) |
+| `listeners` | `int \| None` | Current listener count |
+| `last_playing` | `str` | Last-played track string from `<lastPlaying>` |
+| `updated` | `int \| None` | Server-side update epoch |
 | `streams` | `list[str]` | All available playlist URLs |
+| `stream_variants` | `list[StreamVariant]` | Typed variants with `format`, `bitrate`, `codec`, `container`, `source` |
 | `best_stream` | `str \| None` | Highest-quality playlist URL |
 | `fastest_stream` | `str \| None` | Lowest-latency playlist URL |
 | `m3u_stream` | `str` | Constructed `.m3u` URL |
 | `direct_stream` | `str` | Direct MP3 stream URL (ice2) |
 | `alt_direct_stream` | `str` | Alternate direct MP3 stream (ice4) |
 
-### `__str__` / `__repr__`
+### StreamVariant
 
-`str(station)` returns `fastest_stream` (empty string if unavailable).  
-`repr(station)` returns `"<title>:<fastest_stream>"`.
+| Attribute | Description |
+|---|---|
+| `url` | Playlist URL |
+| `format` | SOMA format tag (`aac`, `aacp`, `mp3`) |
+| `bitrate` | kbps figure parsed from the playlist filename (e.g. `"130"`) |
+| `codec` | Canonical codec hint (`aac`, `he-aac`, `mp3`) |
+| `container` | Canonical container hint (`adts`, `mp3`) |
+| `source` | `"highestpls"`, `"fastpls"`, or `"slowpls"` |
 
-## Stream URL priority
+### Stream URL priority
 
-- `best_stream` — prefers `highestpls` entries first, falls back to `fastpls`
-- `fastest_stream` — prefers `fastpls` entries first, falls back to `highestpls`
-- `direct_stream` / `alt_direct_stream` — always available, constructed from `station_id`
+- `best_stream` — first `highestpls`, falls back to `fastpls`/`slowpls`.
+- `fastest_stream` — first `fastpls`, falls back to `highestpls`/`slowpls`.
+- `direct_stream` / `alt_direct_stream` — always available, constructed from `station_id`.
 
 ## get_recent_tracks(channel_id)
 
@@ -67,23 +78,46 @@ from radiosoma.converters import MODALITY  # {PlaybackModality.AUDIO}
 
 ### `station_to_release(station) -> Release`
 
-Returns a `mediavocab.Release` whose:
+Returns a single `mediavocab.Release` for the highest-quality stream:
 
-- `work.media_type == MediaType.RADIO` (axiom 8: a station is a `Work`)
-- `stream_mode == StreamMode.CONTINUOUS` (rolling live linear broadcast)
-- `work.country == "US"` and `work.language == "en"`
-- `work.external_ids["soma_fm_channel_id"]` is the SOMA FM channel id (string)
+- `work.media_type == MediaType.RADIO`
+- `work.country == "US"`, `work.language == "en"`
+- `work.runtime is None` (continuous live broadcast)
+- `work.content_genres` resolved against `mediavocab.taxonomy.genre.GENRE_*`
+  (unmapped tokens fall through as raw lower-cased strings)
+- `work.external_ids["soma_fm_channel_id"]` is the SOMA channel id (string)
+- `stream_mode == StreamMode.CONTINUOUS`
+- `codec`, `container`, `bitrate`, `audio_channels="stereo"`, `audio_language="en"`
 - `uri` is the best available stream URL
 - `image` is the largest channel artwork
+
+### `station_to_releases(station) -> list[Release]`
+
+One `Release` per stream variant SOMA exposes (typically four:
+high-quality AAC, MP3, low-bitrate HE-AAC, lo-fi HE-AAC). All releases
+share the same underlying `Work` so consumers can deduplicate by
+identity.
 
 ### `song_to_programme(song, station) -> Programme | None`
 
 Builds a `mediavocab.Programme` from a single recent-tracks dict. The
-programme's `channel` is an `EntityRef` with the channel's
-`soma_fm_channel_id`, `is_live=True`, and `starts_at` an ISO datetime
-derived from the unix `date` field.
+programme's:
+
+- `work` is an `EntityRef` whose `name` is `"Artist - Title"` and whose
+  `external_ids` contain `track_artist` / `track_album` when available.
+- `channel` is an `EntityRef` carrying the channel's `soma_fm_channel_id`.
+- `starts_at` is an ISO datetime derived from the unix `date` field.
+- `is_live` is `True`, `is_repeat` is `False`.
 
 ### `recent_tracks_to_programmes(songs, station) -> list[Programme]`
 
-Vectorised form of `song_to_programme`; entries with empty titles are
-filtered out.
+Vectorised form of `song_to_programme`; entries with empty titles are filtered out.
+
+### `recent_tracks_to_schedule(songs, station) -> Schedule`
+
+Wraps the recent-tracks list in a `mediavocab.Schedule` with:
+
+- `source = "somafm.com"`
+- `fetched_at` set to the current wall clock
+- `valid_from` / `valid_until` covering the timestamp window
+- `channel` pointing at the SOMA channel

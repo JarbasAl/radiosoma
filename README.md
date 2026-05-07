@@ -15,10 +15,12 @@ pip install radiosoma
 SOMA FM channels follow mediavocab axiom 8:
 
 * Each channel is a `Work` with `MediaType.RADIO` (live-linear broadcast).
-* Each stream URL is a `Release` with `StreamMode.CONTINUOUS`.
+* Each distinct stream encoding (130 kbps AAC, 256 kbps MP3, 64 kbps
+  HE-AAC, 32 kbps HE-AAC) is a separate `Release` of the same `Work`,
+  with `StreamMode.CONTINUOUS`.
 * The provider is audio-only (`PlaybackModality.AUDIO`).
-* The recent-tracks feed surfaces as a list of `Programme` entries pointing
-  at the channel `Work`.
+* The recent-tracks feed surfaces as a `Schedule` of `Programme`
+  entries pointing at the channel `Work`.
 
 ## Quick start
 
@@ -27,41 +29,61 @@ from radiosoma import get_stations
 
 for station in get_stations():
     print(station.title, station.best_stream)
+    for variant in station.stream_variants:
+        print(" ", variant.format, variant.bitrate, variant.url)
 ```
 
 ## Convert to mediavocab
 
+### One Release per stream variant
+
 ```python
 from radiosoma import get_stations
-from radiosoma.converters import station_to_release
+from radiosoma.converters import station_to_releases
 
-# fetch the soma jazz channel
 jazz = next(s for s in get_stations() if s.station_id == "groovesalad")
+
+for release in station_to_releases(jazz):
+    print(release.codec, release.bitrate, release.uri)
+    # e.g.  aac    130  https://somafm.com/groovesalad130.pls
+    #       mp3    256  https://somafm.com/groovesalad256.pls
+    #       he-aac  64  https://somafm.com/groovesalad64.pls
+    #       he-aac  32  https://somafm.com/groovesalad32.pls
+```
+
+All releases share the same underlying `Work` so consumers can
+deduplicate by identity. The `Work` carries `country="US"`,
+`language="en"`, `media_type=RADIO`, and `content_genres` resolved
+against `mediavocab.taxonomy.genre.GENRE_*` constants where possible.
+
+### Highest-quality release only
+
+```python
+from radiosoma.converters import station_to_release
 
 release = station_to_release(jazz)
 print(release.work.title)             # "Groove Salad"
-print(release.work.media_type)        # MediaType.RADIO
-print(release.stream_mode)            # StreamMode.CONTINUOUS
-print(release.work.country)           # "US"
-print(release.work.language)          # "en"
-print(release.work.external_ids["soma_fm_channel_id"])  # "groovesalad"
-print(release.uri)                    # https://ice.somafm.com/groovesalad-...
+print(release.codec, release.bitrate) # "aac" "130"
+print(release.audio_channels)         # "stereo"
+print(release.work.content_genres)    # [GENRE_AMBIENT]
 ```
 
 ## Now-playing / recent tracks
 
 ```python
 from radiosoma import get_recent_tracks, get_stations
-from radiosoma.converters import recent_tracks_to_programmes
+from radiosoma.converters import recent_tracks_to_schedule
 
 jazz = next(s for s in get_stations() if s.station_id == "groovesalad")
 songs = get_recent_tracks("groovesalad")
-programmes = recent_tracks_to_programmes(songs, jazz)
 
-now_playing = programmes[0]
-print(now_playing.work.name)          # "Artist - Title"
-print(now_playing.channel.external_ids["soma_fm_channel_id"])
-print(now_playing.starts_at)          # ISO datetime with offset
+schedule = recent_tracks_to_schedule(songs, jazz)
+print(schedule.source)               # "somafm.com"
+print(schedule.fetched_at)           # ISO datetime
+for prog in schedule.programmes[:3]:
+    print(prog.starts_at, prog.work.name)
+    print(prog.work.external_ids["track_artist"],
+          prog.work.external_ids["track_album"])
 ```
 
 ## Provider modality axis
@@ -79,4 +101,10 @@ assert MODALITY == {PlaybackModality.AUDIO}
 
 ## Examples
 
-See the [`examples/`](examples/) directory.
+- [`examples/list_stations.py`](examples/list_stations.py) — list every
+  SOMA channel with all stream variants.
+- [`examples/find_station.py`](examples/find_station.py) — keyword
+  search by title / genre / description.
+- [`examples/mediavocab_jazz.py`](examples/mediavocab_jazz.py) — rich
+  mediavocab demo: multiple `Release`s per channel + a `Schedule` of
+  recent tracks.
