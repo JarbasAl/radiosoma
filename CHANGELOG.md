@@ -1,50 +1,20 @@
 # Changelog
 
-## [Unreleased]
+## [0.0.2a2](https://github.com/TigreGotico/radiosoma/tree/0.0.2a2) (2026-05-07)
 
-**mediavocab integration:**
-
-- `mediavocab>=0.1.0` declared as a hard runtime dep (was being
-  implicit-imported by `converters.station_to_release`).
-- `station_to_release()` returns `StreamMode.CONTINUOUS` per
-  mediavocab spec §4.8 (live linear radio is rolling, no defined
-  end). Previously set `StreamMode.LIVE`, which the spec reserves
-  for real-time broadcast that may become ON_DEMAND when archived.
-- Genres now populate the canonical `Work.content_genres` list
-  (lower-cased, comma-split) instead of being buried in `Work.extra`.
-- `Work.country = "US"` and `Work.language = "en"` populated for
-  every SOMA FM channel.
-- External-id key renamed from `somafm_id` to `soma_fm_channel_id`
-  (axiom 8) and coerced to `str`. The id is mirrored on the
-  `Release.external_ids` for convenience.
-- New `MODALITY = {PlaybackModality.AUDIO}` constant exposed by
-  `radiosoma.converters`.
-- New `get_recent_tracks(channel_id)` API: returns the now-playing
-  /recent-tracks feed from `https://somafm.com/songs/<id>.xml`.
-- New `song_to_programme()` and `recent_tracks_to_programmes()`
-  converters: surface SOMA FM track history as typed
-  `mediavocab.Programme` entries pointing at the channel `Work`,
-  with `is_live=True` and ISO-8601 `starts_at`.
-- Offline `test/test_converter.py` expanded to 16 cases covering
-  modality, country/language, channel-id typing, and Programme
-  conversion.
-
-### Added (multi-stream + scheduling)
-
-- **One Release per encoding** — every SOMA stream variant (MP3 128k, AAC 64k, AAC-HE 32k, etc.) is now emitted as its own `Release`, with `codec` and `bitrate` populated, instead of collapsing them all into a single Release.
-- **`Schedule`** — the recent-tracks XML feed is parsed into a mediavocab `Schedule` of `Programme` entries, giving consumers a typed view of what just played on each channel.
-
-### Fixed
-
-- `_etree2dict` was silently dropping single-element `<pls>` lists by treating them as scalars; lists with one entry are now preserved, restoring stream variants that had been lost on channels with a single playlist.
-
-## [0.0.2a1](https://github.com/JarbasAl/radiosoma/tree/0.0.2a1) (2026-04-27)
-
-[Full Changelog](https://github.com/JarbasAl/radiosoma/compare/0.0.1...0.0.2a1)
+[Full Changelog](https://github.com/TigreGotico/radiosoma/compare/0.0.2a1...0.0.2a2)
 
 **Merged pull requests:**
 
-- modernize: pyproject.toml, drop ovos-utils, bug fixes, docs, CI [\#1](https://github.com/JarbasAl/radiosoma/pull/1) ([JarbasAl](https://github.com/JarbasAl))
+- feat: mediavocab dep + station\_to\_release + tests [\#7](https://github.com/TigreGotico/radiosoma/pull/7) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.0.2a1](https://github.com/TigreGotico/radiosoma/tree/0.0.2a1) (2026-04-27)
+
+[Full Changelog](https://github.com/TigreGotico/radiosoma/compare/0.0.1...0.0.2a1)
+
+**Merged pull requests:**
+
+- fix: add smoke tests so build-tests CI passes [\#3](https://github.com/TigreGotico/radiosoma/pull/3) ([JarbasAl](https://github.com/JarbasAl))
 
 
 
