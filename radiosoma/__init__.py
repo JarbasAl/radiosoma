@@ -226,7 +226,7 @@ class SomaFmStation:
 def get_stations() -> Iterable[SomaFmStation]:
     xml = requests.get("https://api.somafm.com/channels.xml").text
     data = _xml2dict(xml)
-    channels = data.get("channels", {}).get("channel", [])
+    channels = (data.get("channels") or {}).get("channel", []) or []
     if isinstance(channels, dict):
         channels = [channels]
     for channel in channels:
@@ -242,7 +242,7 @@ def get_recent_tracks(channel_id):
     url = f"https://somafm.com/songs/{channel_id}.xml"
     xml = requests.get(url).text
     data = _xml2dict(xml)
-    songs = data.get("songs", {}).get("song", [])
+    songs = (data.get("songs") or {}).get("song", []) or []
     if isinstance(songs, dict):
         songs = [songs]
     return songs
