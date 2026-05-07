@@ -12,7 +12,7 @@ requires-python = ">=3.8"
 dependencies = ["requests", "mediavocab>=0.1.0"]
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["pytest", "vcrpy", "pytest-vcr"]
 
 [project.urls]
 Homepage = "https://github.com/OpenJarbas/radiosoma"
