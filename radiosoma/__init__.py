@@ -4,6 +4,8 @@ from xml.etree import cElementTree as ET
 
 import requests
 
+from radiosoma.transport import default_session
+
 
 def _etree2dict(t):
     d = {t.tag: {} if t.attrib else None}
@@ -105,8 +107,9 @@ class StreamVariant:
 
 
 class SomaFmStation:
-    def __init__(self, raw):
+    def __init__(self, raw, session=None):
         self.raw = raw
+        self.session = session if session is not None else default_session()
 
     @property
     def station_id(self):
@@ -223,24 +226,26 @@ class SomaFmStation:
         return self.title + ":" + str(self)
 
 
-def get_stations() -> Iterable[SomaFmStation]:
-    xml = requests.get("https://api.somafm.com/channels.xml").text
+def get_stations(session=None) -> Iterable[SomaFmStation]:
+    sess = session if session is not None else default_session()
+    xml = sess.get("https://api.somafm.com/channels.xml").text
     data = _xml2dict(xml)
     channels = (data.get("channels") or {}).get("channel", []) or []
     if isinstance(channels, dict):
         channels = [channels]
     for channel in channels:
-        yield SomaFmStation(channel)
+        yield SomaFmStation(channel, session=sess)
 
 
-def get_recent_tracks(channel_id):
+def get_recent_tracks(channel_id, session=None):
     """Fetch the recent-tracks feed for a SOMA FM channel.
 
     Returns a list of dicts (most recent first) with keys
     ``title``, ``artist``, ``album``, ``albumart``, ``date``.
     """
+    sess = session if session is not None else default_session()
     url = f"https://somafm.com/songs/{channel_id}.xml"
-    xml = requests.get(url).text
+    xml = sess.get(url).text
     data = _xml2dict(xml)
     songs = (data.get("songs") or {}).get("song", []) or []
     if isinstance(songs, dict):

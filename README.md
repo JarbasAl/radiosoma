@@ -95,6 +95,39 @@ from mediavocab import PlaybackModality
 assert MODALITY == {PlaybackModality.AUDIO}
 ```
 
+## HTTP transport
+
+`radiosoma` uses `requests` by default, but the HTTP session is
+pluggable for consistency with sibling API clients in the family.
+
+You can inject your own session:
+
+```python
+import requests
+from radiosoma import get_stations, get_recent_tracks
+
+sess = requests.Session()
+sess.headers.update({"User-Agent": "my-app/1.0"})
+
+for station in get_stations(session=sess):
+    ...
+
+tracks = get_recent_tracks("groovesalad", session=sess)
+```
+
+`SomaFmStation(raw, session=...)` likewise accepts an injected session.
+
+To opt in to a `curl_cffi` browser-impersonating session, install the
+optional extra and set the env var:
+
+```bash
+pip install radiosoma[stealth]
+export RADIOSOMA_TRANSPORT=curl_cffi
+```
+
+SomaFM is a friendly open API and does not need stealth transport — this
+is here purely for parity across the api_clients family.
+
 ## Docs
 
 - [API reference](docs/api.md)

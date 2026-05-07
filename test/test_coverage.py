@@ -2,7 +2,7 @@
 property builders not exercised by the cassette-backed tests."""
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from radiosoma import (
     SomaFmStation,
@@ -243,7 +243,7 @@ def test_get_stations_handles_single_channel_dict():
         "<channel id='only'><title>Only</title></channel>"
         "</channels>"
     )
-    with patch("radiosoma.requests.get", return_value=_FakeResp(xml)):
+    with patch("radiosoma.default_session", return_value=MagicMock(get=MagicMock(return_value=_FakeResp(xml)))):
         stations = list(get_stations())
     assert len(stations) == 1
     assert stations[0].station_id == "only"
@@ -256,13 +256,13 @@ def test_get_stations_handles_multiple_channels():
         "<channel id='b'><title>B</title></channel>"
         "</channels>"
     )
-    with patch("radiosoma.requests.get", return_value=_FakeResp(xml)):
+    with patch("radiosoma.default_session", return_value=MagicMock(get=MagicMock(return_value=_FakeResp(xml)))):
         stations = list(get_stations())
     assert {s.station_id for s in stations} == {"a", "b"}
 
 
 def test_get_stations_malformed_xml_yields_empty():
-    with patch("radiosoma.requests.get", return_value=_FakeResp("<not valid")):
+    with patch("radiosoma.default_session", return_value=MagicMock(get=MagicMock(return_value=_FakeResp("<not valid")))):
         assert list(get_stations()) == []
 
 
@@ -272,7 +272,7 @@ def test_get_recent_tracks_handles_single_song_dict():
         "<song><title>Solo</title><artist>X</artist><date>1700000000</date></song>"
         "</songs>"
     )
-    with patch("radiosoma.requests.get", return_value=_FakeResp(xml)):
+    with patch("radiosoma.default_session", return_value=MagicMock(get=MagicMock(return_value=_FakeResp(xml)))):
         songs = get_recent_tracks("foo")
     assert len(songs) == 1
     assert songs[0]["title"] == "Solo"
@@ -280,7 +280,7 @@ def test_get_recent_tracks_handles_single_song_dict():
 
 def test_get_recent_tracks_handles_empty_feed():
     xml = "<songs></songs>"
-    with patch("radiosoma.requests.get", return_value=_FakeResp(xml)):
+    with patch("radiosoma.default_session", return_value=MagicMock(get=MagicMock(return_value=_FakeResp(xml)))):
         assert get_recent_tracks("foo") == []
 
 
