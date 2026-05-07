@@ -41,3 +41,49 @@ Returns a generator of `SomaFmStation` objects.
 - `best_stream` — prefers `highestpls` entries first, falls back to `fastpls`
 - `fastest_stream` — prefers `fastpls` entries first, falls back to `highestpls`
 - `direct_stream` / `alt_direct_stream` — always available, constructed from `station_id`
+
+## get_recent_tracks(channel_id)
+
+```python
+from radiosoma import get_recent_tracks
+
+for song in get_recent_tracks("groovesalad"):
+    print(song["artist"], "-", song["title"])
+```
+
+Returns a list of dicts (most recent first) with keys `title`, `artist`,
+`album`, `albumart`, `date` (unix epoch as string).
+
+## mediavocab converters
+
+`radiosoma.converters` translates radiosoma data into the canonical
+[mediavocab](https://github.com/JarbasAl/mediavocab) types.
+
+### Modality
+
+```python
+from radiosoma.converters import MODALITY  # {PlaybackModality.AUDIO}
+```
+
+### `station_to_release(station) -> Release`
+
+Returns a `mediavocab.Release` whose:
+
+- `work.media_type == MediaType.RADIO` (axiom 8: a station is a `Work`)
+- `stream_mode == StreamMode.CONTINUOUS` (rolling live linear broadcast)
+- `work.country == "US"` and `work.language == "en"`
+- `work.external_ids["soma_fm_channel_id"]` is the SOMA FM channel id (string)
+- `uri` is the best available stream URL
+- `image` is the largest channel artwork
+
+### `song_to_programme(song, station) -> Programme | None`
+
+Builds a `mediavocab.Programme` from a single recent-tracks dict. The
+programme's `channel` is an `EntityRef` with the channel's
+`soma_fm_channel_id`, `is_live=True`, and `starts_at` an ISO datetime
+derived from the unix `date` field.
+
+### `recent_tracks_to_programmes(songs, station) -> list[Programme]`
+
+Vectorised form of `song_to_programme`; entries with empty titles are
+filtered out.

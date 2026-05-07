@@ -1,10 +1,15 @@
-"""Offline unit test for ``radiosoma.converters.station_to_release``."""
+"""Offline unit tests for ``radiosoma.converters``."""
 from __future__ import annotations
 
-from mediavocab import MediaType, StreamMode
+from mediavocab import MediaType, PlaybackModality, StreamMode
 
 from radiosoma import SomaFmStation
-from radiosoma.converters import station_to_release
+from radiosoma.converters import (
+    MODALITY,
+    recent_tracks_to_programmes,
+    song_to_programme,
+    station_to_release,
+)
 
 
 def _station(**overrides):
@@ -19,6 +24,10 @@ def _station(**overrides):
     )
     raw.update(overrides)
     return SomaFmStation(raw)
+
+
+def test_modality_is_audio_only():
+    assert MODALITY == {PlaybackModality.AUDIO}
 
 
 def test_to_release_uses_radio_media_type():
@@ -41,9 +50,23 @@ def test_to_release_carries_image():
     assert rel.image == "https://somafm.com/img/groovesalad-large.jpg"
 
 
-def test_to_release_external_ids_carry_somafm_id():
+def test_to_release_external_ids_use_soma_fm_channel_id():
     rel = station_to_release(_station())
-    assert rel.work.external_ids.get("somafm_id") == "groovesalad"
+    assert rel.work.external_ids.get("soma_fm_channel_id") == "groovesalad"
+    # Same id mirrored on the Release for convenience.
+    assert rel.external_ids.get("soma_fm_channel_id") == "groovesalad"
+
+
+def test_to_release_channel_id_is_string_typed():
+    rel = station_to_release(_station(id=12345))
+    assert rel.work.external_ids["soma_fm_channel_id"] == "12345"
+    assert isinstance(rel.work.external_ids["soma_fm_channel_id"], str)
+
+
+def test_to_release_country_and_language_are_us_english():
+    rel = station_to_release(_station())
+    assert rel.work.country == "US"
+    assert rel.work.language == "en"
 
 
 def test_to_release_genre_split_into_content_genres():
@@ -65,3 +88,39 @@ def test_to_release_handles_missing_optional_fields():
     assert rel.work.media_type == MediaType.RADIO
     assert rel.work.content_genres == []
     assert rel.uri == ""
+
+
+def test_song_to_programme_basic():
+    station = _station()
+    song = {
+        "title": "Luminis",
+        "artist": "Luis Junior",
+        "album": "Urban Woman .01",
+        "date": "1778114640",
+    }
+    prog = song_to_programme(song, station)
+    assert prog is not None
+    assert prog.work.name == "Luis Junior - Luminis"
+    assert prog.channel.external_ids["soma_fm_channel_id"] == "groovesalad"
+    assert prog.is_live is True
+    assert prog.extra["album"] == "Urban Woman .01"
+    assert prog.extra["artist"] == "Luis Junior"
+    # IsoDate validator accepts ISO datetimes with offset.
+    assert prog.starts_at.startswith("20")
+
+
+def test_song_to_programme_skips_empty_title():
+    assert song_to_programme({"title": "", "date": "1778114640"}, _station()) is None
+
+
+def test_recent_tracks_to_programmes_filters_empty():
+    station = _station()
+    songs = [
+        {"title": "A", "artist": "X", "date": "1778114640"},
+        {"title": "", "artist": "", "date": "1778114000"},
+        {"title": "B", "artist": "Y", "date": "1778113000"},
+    ]
+    progs = recent_tracks_to_programmes(songs, station)
+    assert len(progs) == 2
+    assert progs[0].work.name == "X - A"
+    assert progs[1].work.name == "Y - B"

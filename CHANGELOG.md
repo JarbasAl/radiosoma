@@ -12,7 +12,22 @@
   for real-time broadcast that may become ON_DEMAND when archived.
 - Genres now populate the canonical `Work.content_genres` list
   (lower-cased, comma-split) instead of being buried in `Work.extra`.
-- New offline `test/test_converter.py` (8 cases).
+- `Work.country = "US"` and `Work.language = "en"` populated for
+  every SOMA FM channel.
+- External-id key renamed from `somafm_id` to `soma_fm_channel_id`
+  (axiom 8) and coerced to `str`. The id is mirrored on the
+  `Release.external_ids` for convenience.
+- New `MODALITY = {PlaybackModality.AUDIO}` constant exposed by
+  `radiosoma.converters`.
+- New `get_recent_tracks(channel_id)` API: returns the now-playing
+  /recent-tracks feed from `https://somafm.com/songs/<id>.xml`.
+- New `song_to_programme()` and `recent_tracks_to_programmes()`
+  converters: surface SOMA FM track history as typed
+  `mediavocab.Programme` entries pointing at the channel `Work`,
+  with `is_live=True` and ISO-8601 `starts_at`.
+- Offline `test/test_converter.py` expanded to 16 cases covering
+  modality, country/language, channel-id typing, and Programme
+  conversion.
 
 ## [0.0.2a1](https://github.com/JarbasAl/radiosoma/tree/0.0.2a1) (2026-04-27)
 

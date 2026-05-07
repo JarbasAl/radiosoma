@@ -130,3 +130,18 @@ def get_stations():
         channels = [channels]
     for channel in channels:
         yield SomaFmStation(channel)
+
+
+def get_recent_tracks(channel_id):
+    """Fetch the recent-tracks feed for a SOMA FM channel.
+
+    Returns a list of dicts (most recent first) with keys
+    ``title``, ``artist``, ``album``, ``albumart``, ``date``.
+    """
+    url = f"https://somafm.com/songs/{channel_id}.xml"
+    xml = requests.get(url).text
+    data = _xml2dict(xml)
+    songs = data.get("songs", {}).get("song", [])
+    if isinstance(songs, dict):
+        songs = [songs]
+    return songs
