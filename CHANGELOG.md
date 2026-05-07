@@ -29,6 +29,15 @@
   modality, country/language, channel-id typing, and Programme
   conversion.
 
+### Added (multi-stream + scheduling)
+
+- **One Release per encoding** — every SOMA stream variant (MP3 128k, AAC 64k, AAC-HE 32k, etc.) is now emitted as its own `Release`, with `codec` and `bitrate` populated, instead of collapsing them all into a single Release.
+- **`Schedule`** — the recent-tracks XML feed is parsed into a mediavocab `Schedule` of `Programme` entries, giving consumers a typed view of what just played on each channel.
+
+### Fixed
+
+- `_etree2dict` was silently dropping single-element `<pls>` lists by treating them as scalars; lists with one entry are now preserved, restoring stream variants that had been lost on channels with a single playlist.
+
 ## [0.0.2a1](https://github.com/JarbasAl/radiosoma/tree/0.0.2a1) (2026-04-27)
 
 [Full Changelog](https://github.com/JarbasAl/radiosoma/compare/0.0.1...0.0.2a1)
