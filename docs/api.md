@@ -1,8 +1,8 @@
-# radiosoma API
+# API reference
 
-`radiosoma` is a thin Python client for the [SomaFM](https://somafm.com) public channels API.
+## get_stations(session=None)
 
-## get_stations()
+`radiosoma/__init__.py:227`
 
 ```python
 from radiosoma import get_stations
@@ -11,113 +11,79 @@ for station in get_stations():
     print(station.title, station.best_stream)
 ```
 
-Returns a generator of `SomaFmStation` objects.
+Generator. Fetches `https://api.somafm.com/channels.xml` and yields one
+`SomaFmStation` per channel. Pass `session` to reuse an existing HTTP session.
 
-## SomaFmStation
+---
 
-### Properties
+## get_recent_tracks(channel_id, session=None)
 
-| Property | Type | Description |
-|---|---|---|
-| `station_id` | `str` | Short identifier (e.g. `"groovesalad"`) |
-| `title` | `str` | Human-readable name |
-| `description` | `str` | Station description |
-| `genre` | `str` | Music genre tag (raw, may use `,` or `\|` separators) |
-| `image` | `str \| None` | URL of the largest available image |
-| `dj` | `str` | DJ name (empty if none) |
-| `listeners` | `int \| None` | Current listener count |
-| `last_playing` | `str` | Last-played track string from `<lastPlaying>` |
-| `updated` | `int \| None` | Server-side update epoch |
-| `streams` | `list[str]` | All available playlist URLs |
-| `stream_variants` | `list[StreamVariant]` | Typed variants with `format`, `bitrate`, `codec`, `container`, `source` |
-| `best_stream` | `str \| None` | Highest-quality playlist URL |
-| `fastest_stream` | `str \| None` | Lowest-latency playlist URL |
-| `m3u_stream` | `str` | Constructed `.m3u` URL |
-| `direct_stream` | `str` | Direct MP3 stream URL (ice2) |
-| `alt_direct_stream` | `str` | Alternate direct MP3 stream (ice4) |
-
-### StreamVariant
-
-| Attribute | Description |
-|---|---|
-| `url` | Playlist URL |
-| `format` | SOMA format tag (`aac`, `aacp`, `mp3`) |
-| `bitrate` | kbps figure parsed from the playlist filename (e.g. `"130"`) |
-| `codec` | Canonical codec hint (`aac`, `he-aac`, `mp3`) |
-| `container` | Canonical container hint (`adts`, `mp3`) |
-| `source` | `"highestpls"`, `"fastpls"`, or `"slowpls"` |
-
-### Stream URL priority
-
-- `best_stream` — first `highestpls`, falls back to `fastpls`/`slowpls`.
-- `fastest_stream` — first `fastpls`, falls back to `highestpls`/`slowpls`.
-- `direct_stream` / `alt_direct_stream` — always available, constructed from `station_id`.
-
-## get_recent_tracks(channel_id)
+`radiosoma/__init__.py:238`
 
 ```python
 from radiosoma import get_recent_tracks
 
-for song in get_recent_tracks("groovesalad"):
-    print(song["artist"], "-", song["title"])
+songs = get_recent_tracks("groovesalad")
+# [{"title": ..., "artist": ..., "album": ..., "albumart": ..., "date": "1715000000"}, ...]
 ```
 
-Returns a list of dicts (most recent first) with keys `title`, `artist`,
-`album`, `albumart`, `date` (unix epoch as string).
+Returns a list of dicts (most recent first). `date` is a unix epoch string.
+Fetches `https://somafm.com/songs/<channel_id>.xml`.
 
-## mediavocab converters
+---
 
-`radiosoma.converters` translates radiosoma data into the canonical
-[mediavocab](https://github.com/JarbasAl/mediavocab) types.
+## SomaFmStation
 
-### Modality
+`radiosoma/__init__.py:107`
 
-```python
-from radiosoma.converters import MODALITY  # {PlaybackModality.AUDIO}
-```
+### Properties
 
-### `station_to_release(station) -> Release`
+| Property | Type | Source line |
+|---|---|---|
+| `station_id` | `str` | `__init__.py:113` |
+| `title` | `str` | `__init__.py:117` |
+| `description` | `str` | `__init__.py:129` |
+| `genre` | `str \| None` | `__init__.py:133` |
+| `image` | `str \| None` | `__init__.py:121` — prefers `xlimage` > `largeimage` > `image` |
+| `dj` | `str` | `__init__.py:136` |
+| `listeners` | `int \| None` | `__init__.py:140` |
+| `last_playing` | `str` | `__init__.py:147` |
+| `updated` | `int \| None` | `__init__.py:152` |
+| `stream_variants` | `list[StreamVariant]` | `__init__.py:178` — highestpls → fastpls → slowpls |
+| `streams` | `list[str]` | `__init__.py:188` — all URLs (legacy) |
+| `best_stream` | `str \| None` | `__init__.py:193` — first highestpls, fallback fastpls/slowpls |
+| `fastest_stream` | `str \| None` | `__init__.py:199` — first fastpls, fallback highestpls/slowpls |
+| `m3u_stream` | `str` | `__init__.py:210` — `http://somafm.com/m3u/<id>.m3u` |
+| `direct_stream` | `str` | `__init__.py:214` — `http://ice2.somafm.com/<id>-128-mp3` |
+| `alt_direct_stream` | `str` | `__init__.py:218` — `http://ice4.somafm.com/<id>-128-mp3` |
 
-Returns a single `mediavocab.Release` for the highest-quality stream:
+---
 
-- `work.media_type == MediaType.RADIO`
-- `work.country == "US"`, `work.language == "en"`
-- `work.runtime is None` (continuous live broadcast)
-- `work.content_genres` resolved against `mediavocab.taxonomy.genre.GENRE_*`
-  (unmapped tokens fall through as raw lower-cased strings)
-- `work.external_ids["soma_fm_channel_id"]` is the SOMA channel id (string)
-- `stream_mode == StreamMode.CONTINUOUS`
-- `codec`, `container`, `bitrate`, `audio_channels="stereo"`, `audio_language="en"`
-- `uri` is the best available stream URL
-- `image` is the largest channel artwork
+## StreamVariant
 
-### `station_to_releases(station) -> list[Release]`
+`radiosoma/__init__.py:84`
 
-One `Release` per stream variant SOMA exposes (typically four:
-high-quality AAC, MP3, low-bitrate HE-AAC, lo-fi HE-AAC). All releases
-share the same underlying `Work` so consumers can deduplicate by
-identity.
+| Attribute | Type | Description |
+|---|---|---|
+| `url` | `str` | Playlist URL |
+| `format` | `str` | SOMA format tag: `aac`, `aacp`, `mp3` |
+| `bitrate` | `str` | kbps parsed from the playlist filename |
+| `codec` | `str` | Canonical codec: `aac`, `he-aac`, `mp3` |
+| `container` | `str` | Canonical container: `adts`, `mp3` |
+| `source` | `str` | `"highestpls"`, `"fastpls"`, or `"slowpls"` |
 
-### `song_to_programme(song, station) -> Programme | None`
+`codec` and `container` are derived properties — `radiosoma/__init__.py:96-101`.
 
-Builds a `mediavocab.Programme` from a single recent-tracks dict. The
-programme's:
+### Codec / format mapping
 
-- `work` is an `EntityRef` whose `name` is `"Artist - Title"` and whose
-  `external_ids` contain `track_artist` / `track_album` when available.
-- `channel` is an `EntityRef` carrying the channel's `soma_fm_channel_id`.
-- `starts_at` is an ISO datetime derived from the unix `date` field.
-- `is_live` is `True`, `is_repeat` is `False`.
+| SOMA `format` | `codec` | `container` |
+|---|---|---|
+| `aac` | `aac` | `adts` |
+| `aacp` | `he-aac` | `adts` |
+| `mp3` | `mp3` | `mp3` |
 
-### `recent_tracks_to_programmes(songs, station) -> list[Programme]`
+### Bitrate parsing
 
-Vectorised form of `song_to_programme`; entries with empty titles are filtered out.
-
-### `recent_tracks_to_schedule(songs, station) -> Schedule`
-
-Wraps the recent-tracks list in a `mediavocab.Schedule` with:
-
-- `source = "somafm.com"`
-- `fetched_at` set to the current wall clock
-- `valid_from` / `valid_until` covering the timestamp window
-- `channel` pointing at the SOMA channel
+The bitrate is extracted from the trailing digits of the playlist filename
+(`groovesalad130.pls` → `"130"`). Playlists with no numeric suffix default
+to `"128"` (legacy MP3 stream). `radiosoma/__init__.py:54`
