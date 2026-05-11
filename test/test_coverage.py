@@ -331,4 +331,4 @@ def test_song_to_programme_no_artist_uses_title_only():
     station = SomaFmStation({"id": "groovesalad", "title": "Groove Salad"})
     prog = song_to_programme({"title": "Solo"}, station)
     assert prog is not None
-    assert prog.work.name == "Solo"
+    assert prog.work.title == "Solo"

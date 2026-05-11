@@ -1,12 +1,12 @@
 """Offline unit tests for ``radiosoma.converters``."""
 from __future__ import annotations
 
-from mediavocab import MediaType, PlaybackModality, StreamMode
+from mediavocab import MediaType, PlaybackType, StreamMode
 from mediavocab.taxonomy import genre as _genre
 
 from radiosoma import SomaFmStation
 from radiosoma.converters import (
-    MODALITY,
+    PLAYBACK_TYPE,
     recent_tracks_to_programmes,
     recent_tracks_to_schedule,
     song_to_programme,
@@ -36,8 +36,8 @@ def _station(**overrides):
     return SomaFmStation(raw)
 
 
-def test_modality_is_audio_only():
-    assert MODALITY == {PlaybackModality.AUDIO}
+def test_playback_type_is_audio_only():
+    assert PLAYBACK_TYPE == {PlaybackType.AUDIO}
 
 
 def test_to_release_uses_radio_media_type():
@@ -75,7 +75,7 @@ def test_to_release_channel_id_is_string_typed():
 
 def test_to_release_country_and_language_are_us_english():
     rel = station_to_release(_station())
-    assert rel.work.country == "US"
+    assert rel.work.broadcaster_country == "US"
     assert rel.work.language == "en"
 
 
@@ -181,7 +181,7 @@ def test_song_to_programme_basic():
     }
     prog = song_to_programme(song, station)
     assert prog is not None
-    assert prog.work.name == "Luis Junior - Luminis"
+    assert prog.work.title == "Luis Junior - Luminis"
     assert prog.work.external_ids["track_artist"] == "Luis Junior"
     assert prog.work.external_ids["track_album"] == "Urban Woman .01"
     assert prog.channel.external_ids["soma_fm_channel_id"] == "groovesalad"
@@ -206,8 +206,8 @@ def test_recent_tracks_to_programmes_filters_empty():
     ]
     progs = recent_tracks_to_programmes(songs, station)
     assert len(progs) == 2
-    assert progs[0].work.name == "X - A"
-    assert progs[1].work.name == "Y - B"
+    assert progs[0].work.title == "X - A"
+    assert progs[1].work.title == "Y - B"
 
 
 def test_recent_tracks_to_schedule_wraps_programmes():

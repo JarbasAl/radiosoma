@@ -7,7 +7,7 @@ SOMA FM channels are modelled per mediavocab axiom 8:
   ``StreamMode.CONTINUOUS``. SOMA exposes multiple bitrate/codec pairs
   per channel (e.g. 130 kbps AAC, 128 kbps MP3, 64 kbps HE-AAC,
   32 kbps HE-AAC); each is a separate ``Release`` of the same ``Work``.
-* Audio-only providers declare ``modality = {PlaybackModality.AUDIO}``.
+* Audio-only providers declare ``modality = {PlaybackType.AUDIO}``.
 
 Recent-tracks feeds (``https://somafm.com/songs/<id>.xml``) are surfaced as
 ``Programme`` entries scheduled against the channel ``Work``, optionally
@@ -20,7 +20,7 @@ from typing import List, Optional
 
 from mediavocab import (
     MediaType,
-    PlaybackModality,
+    PlaybackType,
     Release as MvRelease,
     StreamMode,
     Work,
@@ -34,7 +34,7 @@ from radiosoma import SomaFmStation, StreamVariant
 
 # Audio-only provider axis. Importable by consumers that need to reason
 # about the provider modality without instantiating a converter.
-MODALITY = {PlaybackModality.AUDIO}
+PLAYBACK_TYPE = {PlaybackType.AUDIO}
 
 
 # Map SOMA's free-form ``<genre>`` tags to canonical
@@ -79,8 +79,8 @@ _GENRE_MAP = {
     "latin": _genre.GENRE_LATIN,
     "disco": _genre.GENRE_DISCO,
     "comedy": _genre.GENRE_COMEDY,
-    "news": _genre.GENRE_NEWS,
-    "talk": _genre.GENRE_TALK_SHOW,
+    "news": "news",
+    "talk": "talk_show",
     "spoken word": _genre.GENRE_SPOKEN_WORD,
     "drone": _genre.GENRE_AMBIENT,
     "experimental": _genre.GENRE_AMBIENT,
@@ -141,7 +141,7 @@ def _station_work(station: SomaFmStation) -> Work:
     """Build the canonical ``Work`` for a SOMA channel."""
     extra: dict = {}
     if station.streams:
-        extra["stream_urls"] = station.streams
+        extra["stream_urls"] = ",".join(station.streams)
     if station.description:
         extra["description"] = station.description
     if station.dj:
@@ -158,7 +158,7 @@ def _station_work(station: SomaFmStation) -> Work:
     return Work(
         title=station.title,
         media_type=MediaType.RADIO,
-        country="US",
+        broadcaster_country="US",
         language="en",
         # ``runtime`` is intentionally omitted (None): a continuous live
         # broadcast has no finite duration.
@@ -270,9 +270,9 @@ def song_to_programme(
     if song.get("albumart"):
         track_extra["albumart"] = song["albumart"]
 
-    work_ref = EntityRef(
-        name=name,
-        kind=EntityKind.OTHER,
+    work_ref = Work(
+        title=name,
+        media_type=MediaType.MUSIC,
         external_ids=work_ext,
     )
 
@@ -280,9 +280,11 @@ def song_to_programme(
         tz=timezone.utc
     ).isoformat()
 
+    channel_work = _station_work(station)
+
     return Programme(
         work=work_ref,
-        channel=_channel_ref(station),
+        channel=channel_work,
         starts_at=starts_at,
         is_live=True,
         is_repeat=False,
@@ -317,11 +319,18 @@ def recent_tracks_to_schedule(
     take the min/max conservatively).
     """
     programmes = recent_tracks_to_programmes(songs, station)
+    programmes = sorted(programmes, key=lambda p: p.starts_at or "")
+    # Schedule requires non-tail programmes to have ends_at set; chain
+    # each programme's ends_at to its successor's starts_at.
+    for i in range(len(programmes) - 1):
+        programmes[i] = programmes[i].model_copy(
+            update={"ends_at": programmes[i + 1].starts_at}
+        )
     starts = [p.starts_at for p in programmes if p.starts_at]
     valid_from = min(starts) if starts else None
     valid_until = max(starts) if starts else None
     return Schedule(
-        channel=_channel_ref(station),
+        channel=_station_work(station),
         programmes=programmes,
         source="somafm.com",
         fetched_at=datetime.now(tz=timezone.utc).isoformat(),

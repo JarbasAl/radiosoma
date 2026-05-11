@@ -1,6 +1,6 @@
 """04 — Convert a channel to a mediavocab Release and inspect its shape."""
 from radiosoma import get_stations
-from radiosoma.converters import MODALITY, station_to_release
+from radiosoma.converters import PLAYBACK_TYPE, station_to_release
 
 station = next(s for s in get_stations() if s.station_id == "groovesalad")
 release = station_to_release(station)
@@ -31,4 +31,4 @@ print(f"  external_ids:   {release.external_ids}")
 print()
 
 # Provider modality axis
-print(f"MODALITY: {MODALITY}")
+print(f"PLAYBACK_TYPE: {PLAYBACK_TYPE}")
